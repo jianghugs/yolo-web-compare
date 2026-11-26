@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+detections/
+backup/
+dist/
+service.log*
+*.log
+.git/
+.github/
+tests/
+README*.md
+DEPLOY*.md
+CHANGELOG.md
+predict_once.py

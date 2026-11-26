@@ -1,0 +1,4 @@
+# CI 运行单元测试所需的最小依赖（不含 torch/ultralytics，测试只覆盖纯函数）
+numpy>=1.23
+opencv-python-headless>=4.7
+pytest>=7.4

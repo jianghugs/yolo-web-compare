@@ -1,7 +1,5 @@
 # yolo_web_compare 部署运维手册
 
-> 🌐 语言 / Language: [English](DEPLOY.md) | **简体中文**
-
 > 目标机：`<SERVER_IP>`（Ubuntu 22.04），运行用户 `deployer`
 > 本手册覆盖：环境依赖 → 首次部署 → systemd 托管 → 验收 → 升级/回滚 → 排错。
 

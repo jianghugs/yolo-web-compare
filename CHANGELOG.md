@@ -1,6 +1,42 @@
 # yolo_web_compare 变更记录
 
-> Change log is kept in Chinese below (historical record). For docs, see [README](README.md) (English) / [README.zh-CN](README.zh-CN.md).
+## 1.3.0 — 2026-11-26
+
+### 性能
+- **常驻 ffmpeg 拉流（StreamGrabber）**：不再每帧新建 RTMP 连接（原握手 1~2s/帧），
+  持续解码只取最新帧，连续检测帧率从 ~1fps 提升到 5~15fps；断线指数退避重连（1s→30s）。
+
+### 正确性 / 体验
+- **全局推理锁**：HTTP 检测线程与后台连续检测线程串行使用模型，消除并发压模型的隐患。
+- **图库保存去重**：检出画面与上一张 dHash 距离 <= `WC_SAVE_HASH_DIST`（默认 10）时不再落盘，
+  静置画面不再刷屏图库。
+- **XSS 加固**：图库文件名 `encodeURIComponent` 后再进 HTML/URL。
+- `BASEDIR` 改用 `os.path` 实现，兼容 Windows。
+
+### 新增
+- `WC_DETECT_VIA`：可把推理转发给 1238 的 `/api/detectPreview`，本进程不加载模型（省一半显存）。
+- `WC_ALERT_WEBHOOK` / `WC_ALERT_IMAGE`：检出人时向 webhook 推送 JSON 通知（可选带标注图）。
+- 工程化：`Dockerfile`（含 ffmpeg）、GitHub Actions CI、pytest 单元测试（utils 6 项）、
+  `LICENSE`（MIT）、`tools/export_trt.sh`、依赖版本锁定。
+
+## 1.3.0 — 2026-11-26
+
+### 性能
+- **常驻 ffmpeg 拉流（StreamGrabber）**：不再每帧新建 RTMP 连接（原握手 1~2s/帧），
+  持续解码只取最新帧，连续检测帧率从 ~1fps 提升到 5~15fps；断线指数退避重连（1s→30s）。
+
+### 正确性 / 体验
+- **全局推理锁**：HTTP 检测线程与后台连续检测线程串行使用模型，消除并发压模型的隐患。
+- **图库保存去重**：检出画面与上一张 dHash 距离 <= `WC_SAVE_HASH_DIST`（默认 10）时不再落盘，
+  静置画面不再刷屏图库。
+- **XSS 加固**：图库文件名 `encodeURIComponent` 后再进 HTML/URL。
+- `BASEDIR` 改用 `os.path` 实现，兼容 Windows。
+
+### 新增
+- `WC_DETECT_VIA`：可把推理转发给 1238 的 `/api/detectPreview`，本进程不加载模型（省一半显存）。
+- `WC_ALERT_WEBHOOK` / `WC_ALERT_IMAGE`：检出人时向 webhook 推送 JSON 通知（可选带标注图）。
+- 工程化：`Dockerfile`（含 ffmpeg）、GitHub Actions CI、pytest 单元测试（utils 6 项）、
+  `LICENSE`（MIT）、`tools/export_trt.sh`、依赖版本锁定。
 
 ## 1.2.1 — 2026-11-20
 
