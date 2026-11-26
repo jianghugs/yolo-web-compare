@@ -1,5 +1,7 @@
 # yolo_web_compare 变更记录
 
+> Change log is kept in Chinese below (historical record). For docs, see [README](README.md) (English) / [README.zh-CN](README.zh-CN.md).
+
 ## 1.2.1 — 2026-11-20
 
 ### 图库改为分页 + 限制保留量
