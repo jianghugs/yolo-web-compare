@@ -1,6 +1,6 @@
 # yolo_web_compare — 行人检测 Web 控制台
 
-> 🌐 语言 / Language: [English](README.md) | 简体中文]
+> 🌐 语言 / Language: [English](README.md) | **简体中文**
 
 基于 Ultralytics **YOLO11n** 的行人检测 Web 控制台（端口 **1239**），一个页面完成：
 
