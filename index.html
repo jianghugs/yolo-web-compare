@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>行人检测 · YOLO11 实时监控</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: #f5f7fa; color: #2c3e50; min-height: 100vh; padding: 24px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: #7f8c9b; font-size: 13px; margin-bottom: 20px; }
+  .sub a { color: #3498db; text-decoration: none; }
+  .card {
+    background: #fff; border-radius: 10px; padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 20px;
+  }
+  .card h3 { font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .row { display: flex; gap: 14px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
+  label { font-size: 14px; color: #5a6b7c; }
+  input[type=text] {
+    padding: 8px 12px; border: 1px solid #d4dce4; border-radius: 6px;
+    font-size: 14px; width: 220px; outline: none;
+  }
+  input[type=text]:focus { border-color: #3498db; }
+  input[type=text].rtmp-url { width: 380px; max-width: 100%; font-family: Consolas, monospace; font-size: 12px; }
+  button {
+    padding: 10px 22px; border: none; border-radius: 6px; font-size: 14px;
+    cursor: pointer; color: #fff; transition: opacity .2s;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-direct { background: #27ae60; }
+  .btn-live { background: #8e44ad; }
+  .btn-status { background: #16a085; }
+  .btn-ghost { background: #7f8c9b; font-size: 13px; padding: 8px 16px; }
+
+  /* 视频区 */
+  .rtmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+  @media (max-width: 900px) { .rtmp-grid { grid-template-columns: 1fr; } }
+  .stream-box { background: #10151b; border-radius: 8px; min-height: 270px;
+                display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .stream-box img { width: 100%; display: block; }
+  .stream-off { color: #5f7285; font-size: 13px; text-align: center; padding: 20px; line-height: 1.7; }
+  .stream-badge { position: absolute; top: 8px; left: 8px; font-size: 11px; padding: 2px 9px;
+                  border-radius: 10px; background: rgba(0,0,0,.55); color: #fff; }
+  .stream-badge.live { background: rgba(192,57,43,.85); }
+  .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+              background: #ff5b4f; margin-right: 5px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .status-line { font-size: 13px; color: #5a6b7c; margin-top: 10px; line-height: 1.6; }
+  .status-line b { color: #2c3e50; }
+  .count-num { color: #c0392b; }
+
+  /* 图库 */
+  .gallery-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .gallery-head b { font-size: 14px; }
+  .badge { font-size: 12px; color: #7f8c9b; }
+  .g-item { position: relative; border-radius: 8px; overflow: hidden; background: #10151b; cursor: pointer; }
+  .g-item img { width: 100%; height: 110px; object-fit: cover; display: block; }
+  .g-item .g-tag { position: absolute; bottom: 5px; left: 5px; font-size: 11px; padding: 1px 7px;
+                   border-radius: 9px; background: rgba(0,0,0,.6); color: #fff; }
+  .g-item .g-tag.hot { background: rgba(192,57,43,.85); }
+  .empty-gallery { color: #b6c2cd; font-size: 13px; padding: 16px 0; grid-column: 1/-1; text-align: center; }
+  .pager { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .pager button {
+    padding: 6px 14px; font-size: 13px; border-radius: 6px; background: #fff;
+    color: #4a5b6c; border: 1px solid #d4dce4;
+  }
+  .pager button:hover:not(:disabled) { border-color: #3498db; color: #2980b9; }
+  .pager button:disabled { opacity: .45; cursor: not-allowed; }
+  .pager .pg-num {
+    min-width: 34px; padding: 6px 8px; text-align: center;
+    border: 1px solid #d4dce4; border-radius: 6px; background: #fff;
+    font-size: 13px; color: #4a5b6c; cursor: pointer;
+  }
+  .pager .pg-num.active { background: #2980b9; border-color: #2980b9; color: #fff; cursor: default; }
+  .pager .pg-info { font-size: 12px; color: #8aa0b4; margin: 0 6px; }
+
+  /* 单图检测 */
+  .upload-zone {
+    border: 2px dashed #c3cdd8; border-radius: 10px; padding: 28px;
+    text-align: center; cursor: pointer; transition: all .2s; background: #fafcfe;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: #3498db; background: #eef6fc; }
+  .upload-zone img { max-height: 220px; max-width: 100%; border-radius: 6px; }
+  .upload-tip { color: #8aa0b4; font-size: 14px; margin-top: 8px; }
+  .single-result { margin-top: 16px; }
+  .single-result img { width: 100%; border-radius: 6px; background: #f0f3f6; display: block; }
+  .metrics { display: flex; gap: 26px; margin: 12px 0 0; }
+  .metric { text-align: center; }
+  .metric .val { font-size: 24px; font-weight: 700; }
+  .metric .lbl { font-size: 12px; color: #8aa0b4; }
+  .empty { color: #b6c2cd; text-align: center; padding: 24px 0; font-size: 14px; }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; border: 2px solid #fff;
+    border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite;
+    vertical-align: -2px; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>行人检测 · YOLO11 实时监控</h1>
+  <div class="sub">Ultralytics YOLO11n · CUDA 加速 &nbsp;|&nbsp; 流上连续检测 + 检出留档 &nbsp;|&nbsp; <span id="healthLine">服务状态查询中…</span></div>
+
+  <!-- 实时视频流 -->
+  <div class="card">
+    <h3>📹 实时视频流 <span class="badge" style="font-weight:normal">RTMP 直播预览 + 流上检测</span></h3>
+    <div class="row" style="margin-top:0">
+      <label>流地址：</label>
+      <input type="text" class="rtmp-url" id="rtmpUrl" value="rtmp://<RTMP_HOST>:1935/live/<STREAM_KEY>">
+      <button class="btn-status" id="btnRtmpStatus">检测流状态</button>
+      <button class="btn-live" id="btnRtmpLive">▶ 开始直播预览</button>
+      <button class="btn-direct" id="btnRtmpDetect">▶ 开始连续检测</button>
+    </div>
+    <div class="rtmp-grid">
+      <div>
+        <div class="stream-box" id="rtmpBox">
+          <div class="stream-off" id="rtmpOff">点击「▶ 开始直播预览」<br>从 RTMP 流抓帧轮询（约 1 帧/秒）</div>
+        </div>
+        <div class="status-line" id="rtmpStatusLine">状态：未检测</div>
+      </div>
+      <div>
+        <div class="stream-box" id="rtmpDetectBox">
+          <div class="stream-off">点击「▶ 开始连续检测」<br>后台每约 0.8 秒抓一帧 YOLO 检测<br>检出人时自动保存到下方图库</div>
+        </div>
+        <div class="status-line" id="rtmpDetectLine">检测结果：未启动</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 检测图库 -->
+  <div class="card">
+    <div class="gallery-head">
+      <b>📁 检测图库</b>
+      <span class="badge" id="galleryCount"></span>
+      <span style="flex:1"></span>
+      <span class="badge">每页 10 张 · 最多保留 5 页（50 张）· 每 10 秒刷新</span>
+      <button class="btn-ghost" id="btnGalleryRefresh">刷新</button>
+    </div>
+    <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px"></div>
+    <div class="pager" id="galleryPager" style="display:none">
+      <button id="pgPrev">‹ 上一页</button>
+      <span id="pgNums" style="display:flex;gap:6px"></span>
+      <button id="pgNext">下一页 ›</button>
+      <span class="pg-info" id="pgInfo"></span>
+    </div>
+  </div>
+
+  <!-- 单图检测 -->
+  <div class="card">
+    <h3>🖼 单张图片检测 <span class="badge" style="font-weight:normal">上传即测，不留档</span></h3>
+    <div class="upload-zone" id="zone">
+      <div id="previewWrap" style="display:none"><img id="preview" alt="预览"></div>
+      <div id="zoneTip">📷 点击选择图片，或拖拽图片到此处</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <div class="row">
+      <button class="btn-direct" id="btnDirect">开始检测</button>
+      <span class="badge" id="uploadName"></span>
+    </div>
+    <div class="single-result" id="singleResult">
+      <div class="empty">上传一张图片后点击「开始检测」</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function busy(btn, on, text) {
+  btn.disabled = on;
+  btn.innerHTML = on ? '<span class="spinner"></span>' + text : btn.dataset.orig;
+}
+
+/* ---------- 服务健康状态 ---------- */
+fetch('/api/health').then(r => r.json()).then(d => {
+  $('healthLine').innerHTML =
+    `服务 <b style="color:#1e8e5a">正常</b> · v${escapeHtml(d.version)} · ${escapeHtml(d.device)} · 图库 ${d.gallery} 张`;
+}).catch(() => { $('healthLine').textContent = '服务状态获取失败'; });
+
+/* ---------- 实时视频流 ---------- */
+const rtmpUrl = $('rtmpUrl');
+const btnRtmpStatus = $('btnRtmpStatus');
+const btnRtmpLive = $('btnRtmpLive');
+const btnRtmpDetect = $('btnRtmpDetect');
+const rtmpBox = $('rtmpBox');
+const rtmpStatusLine = $('rtmpStatusLine');
+const rtmpDetectBox = $('rtmpDetectBox');
+const rtmpDetectLine = $('rtmpDetectLine');
+let liveOn = false, liveTimer = null;
+
+function rtmpTarget() { return encodeURIComponent(rtmpUrl.value.trim()); }
+
+btnRtmpStatus.dataset.orig = btnRtmpStatus.innerHTML;
+btnRtmpStatus.addEventListener('click', async () => {
+  busy(btnRtmpStatus, true, '探测中（可能需数秒）…');
+  try {
+    const r = await fetch('/api/rtmp/status?url=' + rtmpTarget());
+    const d = await r.json();
+    if (d.online) {
+      const v = d.video || {}, a = d.audio || {};
+      rtmpStatusLine.innerHTML = `状态：<b style="color:#1e8e5a">● 在线</b>　|　视频：<b>${escapeHtml(v.codec || '?')} ${v.width || '?'}×${v.height || '?'}</b>（${escapeHtml(v.profile || '')}）　|　音频：<b>${escapeHtml(a.codec || '无')}</b>${a.sample_rate ? ' ' + escapeHtml(a.sample_rate) + 'Hz' : ''}`;
+    } else {
+      rtmpStatusLine.innerHTML = `状态：<b style="color:#c0392b">● 离线/失败</b>　${escapeHtml(d.error || '')}`;
+    }
+  } catch (e) {
+    rtmpStatusLine.innerHTML = `状态：<b style="color:#c0392b">请求失败</b> ${escapeHtml(String(e))}`;
+  }
+  busy(btnRtmpStatus, false);
+});
+
+btnRtmpLive.dataset.orig = btnRtmpLive.innerHTML;
+btnRtmpLive.addEventListener('click', () => {
+  if (!liveOn) {
+    liveOn = true;
+    btnRtmpLive.innerHTML = '⏸ 停止预览';
+    pollFrame();
+  } else {
+    liveOn = false;
+    clearTimeout(liveTimer);
+    btnRtmpLive.innerHTML = btnRtmpLive.dataset.orig;
+  }
+});
+
+function pollFrame() {
+  if (!liveOn) return;
+  const img = new Image();
+  img.onload = () => {
+    rtmpBox.innerHTML = '<span class="stream-badge live"><span class="live-dot"></span>LIVE</span>';
+    rtmpBox.appendChild(img);
+    liveTimer = setTimeout(pollFrame, 600);
+  };
+  img.onerror = () => {
+    liveOn = false;
+    btnRtmpLive.innerHTML = btnRtmpLive.dataset.orig;
+    rtmpBox.innerHTML = '<div class="stream-off">拉流失败<br>请检查流地址或摄像头是否在推流</div>';
+    rtmpStatusLine.innerHTML = '状态：<b style="color:#c0392b">拉流失败</b>（流可能已断）';
+  };
+  img.src = '/api/rtmp/snapshot?url=' + rtmpTarget() + '&ts=' + Date.now();
+}
+
+/* ---------- 连续检测 ---------- */
+btnRtmpDetect.dataset.orig = btnRtmpDetect.innerHTML;
+let adPoll = null;
+
+btnRtmpDetect.addEventListener('click', async () => {
+  const fd = new FormData();
+  fd.append('url', rtmpUrl.value.trim());
+  if (!btnRtmpDetect.dataset.running) {
+    busy(btnRtmpDetect, true, '启动中…');
+    try {
+      const r = await fetch('/api/rtmp/autodetect/start', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      btnRtmpDetect.dataset.running = '1';
+      btnRtmpDetect.innerHTML = '⏸ 停止连续检测';
+      rtmpDetectLine.textContent = '检测结果：连续检测运行中…';
+      clearInterval(adPoll);
+      adPoll = setInterval(pollAdState, 1000);
+      refreshGallery();
+    } catch (e) {
+      rtmpDetectLine.innerHTML = `<span style="color:#c0392b">启动失败：${escapeHtml(String(e))}</span>`;
+    }
+    busy(btnRtmpDetect, false);
+  } else {
+    await fetch('/api/rtmp/autodetect/stop', { method: 'POST' });
+    btnRtmpDetect.dataset.running = '';
+    btnRtmpDetect.innerHTML = btnRtmpDetect.dataset.orig;
+    clearInterval(adPoll);
+    rtmpDetectLine.innerHTML = '检测结果：<b>已停止</b>（图库保留在下方与服务器 detections/ 目录）';
+  }
+});
+
+function pollAdState() {
+  fetch('/api/rtmp/autodetect/state').then(r => r.json()).then(d => {
+    if (!d.running) {
+      if (btnRtmpDetect.dataset.running) {   // 后端已停（异常或他处停止）
+        btnRtmpDetect.dataset.running = '';
+        btnRtmpDetect.innerHTML = btnRtmpDetect.dataset.orig;
+        clearInterval(adPoll);
+      }
+      return;
+    }
+    if (d.error) {
+      rtmpDetectLine.innerHTML = `检测结果：<b style="color:#c0392b">拉流异常</b>（自动重试中） ${escapeHtml(d.error || '')}`;
+      return;
+    }
+    const img = rtmpDetectBox.querySelector('img');
+    const src = '/detections/latest.jpg?ts=' + Date.now();
+    if (img) { img.src = src; }
+    else {
+      rtmpDetectBox.innerHTML = '';
+      const el = new Image();
+      el.src = src;
+      rtmpDetectBox.appendChild(el);
+    }
+    rtmpDetectLine.innerHTML =
+      `检测结果：<b class="count-num" style="font-size:16px">${d.count}</b> 人　|　` +
+      `本轮耗时 <b>${d.elapsed_ms} ms</b>　|　帧率 <b>${d.fps || 0}</b> fps　|　` +
+      `已检 ${d.frames} 帧 · 已存 ${d.saved} 张`;
+    if (d.last_file) refreshGallery();
+  }).catch(() => {});
+}
+
+/* ---------- 检测图库（分页：每页 10 张，最多 5 页） ---------- */
+const galleryGrid = $('galleryGrid');
+const galleryCount = $('galleryCount');
+const galleryPager = $('galleryPager');
+const pgNums = $('pgNums');
+const pgInfo = $('pgInfo');
+const pgPrev = $('pgPrev');
+const pgNext = $('pgNext');
+const PAGE_SIZE = 10;
+let galleryPage = 1, galleryPages = 1;
+
+setInterval(refreshGallery, 10000);
+$('btnGalleryRefresh').addEventListener('click', () => refreshGallery());
+pgPrev.addEventListener('click', () => { if (galleryPage > 1) { galleryPage--; refreshGallery(); } });
+pgNext.addEventListener('click', () => { if (galleryPage < galleryPages) { galleryPage++; refreshGallery(); } });
+
+function gotoPage(p) {
+  if (p === galleryPage) return;
+  galleryPage = p;
+  refreshGallery();
+}
+
+function refreshGallery() {
+  fetch(`/api/rtmp/gallery?page=${galleryPage}&size=${PAGE_SIZE}`).then(r => r.json()).then(d => {
+    galleryPage = d.page;
+    galleryPages = d.pages;
+    galleryCount.textContent = `共 ${d.total} 张`;
+
+    if (!d.items.length) {
+      galleryGrid.innerHTML = '<div class="empty-gallery">暂无检出画面 —— 启动连续检测，画面中出现人后会自动出现在这里</div>';
+      galleryPager.style.display = 'none';
+      return;
+    }
+
+    galleryGrid.innerHTML = d.items.map((it, i) => {
+      const t = new Date(it.mtime * 1000).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const no = (d.page - 1) * d.size + i + 1;
+      return `<div class="g-item" onclick="window.open('/detections/${it.name}','_blank')">
+        <img src="/detections/${it.name}" loading="lazy" alt="">
+        <span class="g-tag ${it.people > 0 ? 'hot' : ''}">#${no} · ${it.people >= 0 ? it.people + ' 人 · ' : ''}${t}</span>
+      </div>`;
+    }).join('');
+
+    // 分页条
+    galleryPager.style.display = 'flex';
+    pgPrev.disabled = d.page <= 1;
+    pgNext.disabled = d.page >= d.pages;
+    let html = '';
+    for (let p = 1; p <= d.pages; p++) {
+      html += `<span class="pg-num ${p === d.page ? 'active' : ''}" onclick="gotoPage(${p})">${p}</span>`;
+    }
+    pgNums.innerHTML = html;
+    pgInfo.textContent = `第 ${d.page} / ${d.pages} 页 · 本页 ${d.items.length} 张`;
+  }).catch(() => {});
+}
+refreshGallery();
+
+/* ---------- 单图检测 ---------- */
+const zone = $('zone'), fileInput = $('fileInput'), preview = $('preview');
+const previewWrap = $('previewWrap'), zoneTip = $('zoneTip');
+const btnDirect = $('btnDirect'), uploadName = $('uploadName'), singleResult = $('singleResult');
+let currentFile = null;
+
+zone.addEventListener('click', () => fileInput.click());
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag');
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+
+function setFile(f) {
+  if (!f.type.startsWith('image/')) { alert('请选择图片文件'); return; }
+  currentFile = f;
+  preview.src = URL.createObjectURL(f);
+  previewWrap.style.display = 'block';
+  zoneTip.style.display = 'none';
+  uploadName.textContent = f.name + ' · ' + (f.size / 1024).toFixed(0) + ' KB';
+}
+
+btnDirect.dataset.orig = btnDirect.innerHTML;
+btnDirect.addEventListener('click', async () => {
+  if (!currentFile) { alert('请先选择图片'); return; }
+  busy(btnDirect, true, '检测中…');
+  const fd = new FormData();
+  fd.append('file', currentFile);
+  try {
+    const r = await fetch('/api/direct', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.error) {
+      singleResult.innerHTML = `<div class="empty" style="color:#c0392b">推理失败：${escapeHtml(d.error)}</div>`;
+    } else {
+      singleResult.innerHTML = `
+        <img src="data:image/jpeg;base64,${d.image}">
+        <div class="metrics">
+          <div class="metric"><div class="val count-num">${d.count}</div><div class="lbl">检出人数</div></div>
+          <div class="metric"><div class="val">${d.elapsed_ms}<span style="font-size:13px"> ms</span></div><div class="lbl">推理耗时</div></div>
+          <div class="metric"><div class="val" style="font-size:15px;padding-top:6px">${escapeHtml(d.device)}</div><div class="lbl">设备</div></div>
+        </div>`;
+    }
+  } catch (e) {
+    singleResult.innerHTML = `<div class="empty" style="color:#c0392b">请求失败：${escapeHtml(String(e))}</div>`;
+  }
+  busy(btnDirect, false);
+});
+</script>
+</body>
+</html>

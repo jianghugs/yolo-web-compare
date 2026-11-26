@@ -1,0 +1,21 @@
+[Unit]
+Description=Pedestron Pedestrian Detection Service (port 1237, legacy)
+Documentation=file:/home/deployer/Pedestron/demo/b.py
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deployer
+Group=deployer
+WorkingDirectory=/home/deployer/Pedestron/demo
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/deployer/miniconda3/envs/open-mmlab/bin/python -u /home/deployer/Pedestron/demo/b.py
+StandardOutput=append:/home/deployer/Pedestron/demo/log/b_service.log
+StandardError=append:/home/deployer/Pedestron/demo/log/b_service.log
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

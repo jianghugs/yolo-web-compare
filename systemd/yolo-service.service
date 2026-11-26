@@ -1,0 +1,21 @@
+[Unit]
+Description=YOLO Pedestrian Detection Service (port 1238)
+Documentation=file:/home/deployer/yolo_service/DEPLOY.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deployer
+Group=deployer
+WorkingDirectory=/home/deployer/yolo_service
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/deployer/miniconda3/envs/yolo11/bin/python -u /home/deployer/yolo_service/yolo_service.py
+StandardOutput=append:/home/deployer/yolo_service/service.log
+StandardError=append:/home/deployer/yolo_service/service.log
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+/home/deployer/yolo_web_compare/service.log {
+    weekly
+    maxsize 100M
+    rotate 4
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su deployer deployer
+}

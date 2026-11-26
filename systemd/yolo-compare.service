@@ -1,0 +1,20 @@
+[Unit]
+Description=Pedestrian Detection Web Console (YOLO11, port 1239)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deployer
+Group=deployer
+WorkingDirectory=/home/deployer/yolo_web_compare
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/deployer/miniconda3/envs/yolo11/bin/python -u /home/deployer/yolo_web_compare/server.py
+StandardOutput=append:/home/deployer/yolo_web_compare/service.log
+StandardError=append:/home/deployer/yolo_web_compare/service.log
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
